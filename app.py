@@ -1,87 +1,60 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
-import psycopg
+from flask import Flask, request, redirect, render_template
 from flask_bcrypt import Bcrypt
-from flask_login import LoginManager, login_user, logout_user, login_required, UserMixin, current_user
-
-import os
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 
 app = Flask(__name__)
-app.secret_key = '$2b$12$Qq.S9xsNiZAwccLJk32VNOBDOPUgA.3SceinI9ASmujOLeSA/Aoee'  # titkos kulcs session-höz
-
+app.secret_key = 'valami-titkos-kulcs'
 bcrypt = Bcrypt(app)
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = "admin_login"
+login_manager = LoginManager(app)
+login_manager.login_view = 'login'
 
-DB_URL = os.environ.get("DATABASE_URL")
-
-
-# Admin user osztály flask-loginhez
-class AdminUser(UserMixin):
-    def __init__(self, id, username):
+class User(UserMixin):
+    def __init__(self, id, username, password_hash):
         self.id = id
         self.username = username
+        self.password_hash = password_hash
 
+# Az admin user definíciója
+users = {
+    'admin': User(1, 'admin', '$2b$12$Qq.S9xsNiZAwccLJk32VNOBDOPUgA.3SceinI9ASmujOLeSA/Aoee')  # ide a hash-t tedd be!
+}
 
 @login_manager.user_loader
-def load_user(admin_id):
-    with psycopg.connect(DB_URL) as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT id, username FROM admins WHERE id = %s", (admin_id,))
-            admin = cur.fetchone()
-            if admin:
-                return AdminUser(admin[0], admin[1])
+def load_user(user_id):
+    for user in users.values():
+        if str(user.id) == user_id:
+            return user
     return None
 
-
-@app.route('/admin/login', methods=['GET', 'POST'])
-def admin_login():
+@app.route('/login', methods=['GET', 'POST'])
+def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-
-        with psycopg.connect(DB_URL) as conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT id, password_hash FROM admins WHERE username = %s", (username,))
-                admin = cur.fetchone()
-                if admin and bcrypt.check_password_hash(admin[1], password):
-                    user = AdminUser(admin[0], username)
-                    login_user(user)
-                    return redirect(url_for('admin_panel'))
-                else:
-                    flash("Hibás felhasználónév vagy jelszó", "danger")
-
-    return render_template('admin_login.html')
-
-
-@app.route('/admin/logout')
-@login_required
-def admin_logout():
-    logout_user()
-    return redirect(url_for('admin_login'))
-
+        user = users.get(username)
+        if user and bcrypt.check_password_hash(user.password_hash, password):
+            login_user(user)
+            return redirect('/admin')
+        else:
+            return 'Hibás felhasználónév vagy jelszó', 401
+    return '''
+        <form method="post">
+            Felhasználónév: <input name="username"><br>
+            Jelszó: <input name="password" type="password"><br>
+            <input type="submit" value="Bejelentkezés">
+        </form>
+    '''
 
 @app.route('/admin')
 @login_required
-def admin_panel():
-    with psycopg.connect(DB_URL) as conn:
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT a.id, u.name, u.email, a.date, a.time 
-                FROM appointments a
-                JOIN users u ON a.user_id = u.id
-                ORDER BY a.date, a.time
-            """)
-            bookings = cur.fetchall()
-    return render_template('admin_panel.html', bookings=bookings)
+def admin():
+    return f'Üdv, {current_user.username}! Itt tudsz időpontokat kezelni.'
 
-
-@app.route('/admin/delete/<int:booking_id>', methods=['POST'])
+@app.route('/logout')
 @login_required
-def admin_delete_booking(booking_id):
-    with psycopg.connect(DB_URL) as conn:
-        with conn.cursor() as cur:
-            cur.execute("DELETE FROM appointments WHERE id = %s", (booking_id,))
-            conn.commit()
-    flash("Foglalás törölve", "success")
-    return redirect(url_for('admin_panel'))
+def logout():
+    logout_user()
+    return 'Kijelentkeztél.'
+
+if __name__ == '__main__':
+    app.run(debug=True)
