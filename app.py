@@ -1,31 +1,39 @@
-from flask import Flask, render_template, redirect, url_for, request
+from flask import Flask, render_template, request, redirect, url_for, session
 from flask_bcrypt import Bcrypt
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+import psycopg2
+import os
 
 app = Flask(__name__)
-app.secret_key = 'valami-titkos-kulcs'
+app.secret_key = 'secret_key_here'
+
 bcrypt = Bcrypt(app)
-login_manager = LoginManager(app)
+login_manager = LoginManager()
+login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-# ADMIN user létrehozása
 class User(UserMixin):
-    def __init__(self, id, username, password_hash):
+    def __init__(self, id, name, email):
         self.id = id
-        self.username = username
-        self.password_hash = password_hash
+        self.name = name
+        self.email = email
 
-users = {
-    'admin': User(1, 'admin', '$2b$12$Qq.S9xsNiZAwccLJk32VNOBDOPUgA.3SceinI9ASmujOLeSA/Aoee')
-}
-
-appointments = []  # ideiglenes lista az időpontokhoz
+# PostgreSQL kapcsolat
+conn = psycopg2.connect(
+    host=os.getenv('DB_HOST'),
+    dbname=os.getenv('DB_NAME'),
+    user=os.getenv('DB_USER'),
+    password=os.getenv('DB_PASSWORD'),
+    port=os.getenv('DB_PORT')
+)
+cursor = conn.cursor()
 
 @login_manager.user_loader
 def load_user(user_id):
-    for user in users.values():
-        if str(user.id) == user_id:
-            return user
+    cursor.execute("SELECT id, name, email FROM users WHERE id = %s", (int(user_id),))
+    user = cursor.fetchone()
+    if user:
+        return User(*user)
     return None
 
 @app.route('/')
@@ -35,14 +43,15 @@ def index():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form['username']
+        email = request.form['email']
         password = request.form['password']
-        user = users.get(username)
-        if user and bcrypt.check_password_hash(user.password_hash, password):
-            login_user(user)
-            return redirect(url_for('index'))
-        else:
-            return 'Hibás belépés', 401
+        cursor.execute("SELECT id, name, email, password FROM users WHERE email = %s", (email,))
+        user = cursor.fetchone()
+        if user and bcrypt.check_password_hash(user[3], password):
+            user_obj = User(user[0], user[1], user[2])
+            login_user(user_obj)
+            return redirect(url_for('idopontok'))
+        return render_template('login.html', error="Hibás bejelentkezés")
     return render_template('login.html')
 
 @app.route('/logout')
@@ -52,28 +61,21 @@ def logout():
     return redirect(url_for('index'))
 
 @app.route('/idopontok', methods=['GET', 'POST'])
+@login_required
 def idopontok():
-    message = ''
     if request.method == 'POST':
-        if current_user.is_authenticated:
-            new_time = request.form['time']
-            appointments.append(new_time)
-            message = 'Sikeres foglalás.'
-        else:
-            message = 'Csak bejelentkezett felhasználók foglalhatnak időpontot.'
-    return render_template('idopontok.html', appointments=appointments, message=message)
+        datum = request.form['datum']
+        leiras = request.form['leiras']
+        cursor.execute("INSERT INTO appointments (user_id, datum, leiras) VALUES (%s, %s, %s)", (current_user.id, datum, leiras))
+        conn.commit()
+        return render_template('idopontok.html', success=True)
 
-@app.route('/galeria')
-def galeria():
-    return '<h2>Galéria - Hamarosan!</h2>'
-
-@app.route('/rolam')
-def rolam():
-    return '<h2>Rólam - Hamarosan!</h2>'
-
-@app.route('/kapcsolat')
-def kapcsolat():
-    return '<h2>Kapcsolat - Hamarosan!</h2>'
+    if current_user.email == 'admin@example.com':
+        cursor.execute("SELECT a.id, u.name, a.datum, a.leiras FROM appointments a JOIN users u ON a.user_id = u.id ORDER BY datum")
+        appointments = cursor.fetchall()
+        return render_template('idopontok.html', appointments=appointments)
+    else:
+        return render_template('idopontok.html')
 
 if __name__ == '__main__':
     app.run(debug=True)
