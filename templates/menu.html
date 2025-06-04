@@ -1,0 +1,13 @@
+<nav>
+    <a href="{{ url_for('index') }}">Főoldal</a> |
+    <a href="#">Galéria</a> |
+    <a href="#">Rólam</a> |
+    <a href="#">Kapcsolat</a> |
+    <a href="{{ url_for('idopontok') }}">Időpontfoglalás</a> |
+    {% if current_user.is_authenticated %}
+        <a href="{{ url_for('logout') }}">Kijelentkezés</a>
+    {% else %}
+        <a href="{{ url_for('login') }}">Bejelentkezés</a>
+    {% endif %}
+</nav>
+<hr>
