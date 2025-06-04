@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head><meta charset="UTF-8"><title>Admin bejelentkezés</title></head>
+<body>
+  <h2>Admin bejelentkezés</h2>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <ul>
+      {% for category, msg in messages %}
+        <li style="color: red;">{{ msg }}</li>
+      {% endfor %}
+      </ul>
+    {% endif %}
+  {% endwith %}
+  <form method="post">
+    <label>Felhasználónév: <input type="text" name="username" required></label><br>
+    <label>Jelszó: <input type="password" name="password" required></label><br>
+    <button type="submit">Bejelentkezés</button>
+  </form>
+</body>
+</html>
