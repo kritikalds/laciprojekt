@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <title>Időpontfoglalás</title>
+</head>
+<body>
+    {% include 'menu.html' %}
+    <h2>Időpontfoglalás</h2>
+
+    {% if current_user.email == 'admin@example.com' %}
+        <h3>Lefoglalt időpontok:</h3>
+        <ul>
+            {% for id, name, datum, leiras in appointments %}
+                <li>{{ datum }} - {{ name }} - {{ leiras }}</li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <form method="POST">
+            Dátum: <input type="datetime-local" name="datum"><br>
+            Leírás: <input type="text" name="leiras"><br>
+            <button type="submit">Foglalás</button>
+        </form>
+        {% if success %}
+            <p>Sikeres foglalás!</p>
+        {% endif %}
+    {% endif %}
+</body>
+</html>
