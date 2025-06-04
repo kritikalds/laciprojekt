@@ -6,7 +6,7 @@ from flask_login import LoginManager, login_user, logout_user, login_required, U
 import os
 
 app = Flask(__name__)
-app.secret_key = 'supertitkoskulcs'  # titkos kulcs session-höz
+app.secret_key = '$2b$12$Qq.S9xsNiZAwccLJk32VNOBDOPUgA.3SceinI9ASmujOLeSA/Aoee'  # titkos kulcs session-höz
 
 bcrypt = Bcrypt(app)
 login_manager = LoginManager()
