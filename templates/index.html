@@ -2,24 +2,11 @@
 <html lang="hu">
 <head>
     <meta charset="UTF-8">
-    <title>Időpontfoglalás</title>
+    <title>Főoldal</title>
 </head>
 <body>
-    <h1>📅 Időpontfoglaló rendszer</h1>
-
-    <form action="/foglalas" method="POST">
-        <label>Név: <input type="text" name="name" required></label><br>
-        <label>Email: <input type="email" name="email" required></label><br>
-        <label>Dátum: <input type="date" name="date" required></label><br>
-        <label>Idő: <input type="time" name="time" required></label><br>
-        <button type="submit">Foglalás</button>
-    </form>
-
-    <h2>📋 Foglalások</h2>
-    <ul>
-        {% for b in bookings %}
-            <li>{{ b[1] }} - {{ b[2] }} {{ b[3] }}</li>
-        {% endfor %}
-    </ul>
+    {% include 'menu.html' %}
+    <h1>Üdvözöllek az időpontfoglaló rendszerben!</h1>
+    <p>Ez egy demo verzió. Itt jelenhet meg bemutatkozás vagy szolgáltatásleírás.</p>
 </body>
 </html>
