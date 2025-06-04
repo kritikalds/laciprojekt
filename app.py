@@ -5,7 +5,7 @@ import psycopg2
 import os
 
 app = Flask(__name__)
-app.secret_key = 'secret_key_here'
+app.secret_key = 'Qx8E@v!P1kZ#bTfL$3YrMn2s^dL0cVu7'
 
 bcrypt = Bcrypt(app)
 login_manager = LoginManager()
